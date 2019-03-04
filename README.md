@@ -1,6 +1,11 @@
 # PointOfInterest
 
-**TODO: Add description**
+## Description
+
+A program which downloads all Point Of Interest Data from Triposo API and stores
+in a file.
+
+This is basically a Script written in Elixir.
 
 ## Installation
 
