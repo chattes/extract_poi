@@ -74,6 +74,15 @@ defmodule PointOfInterest do
     end
   end
 
+  def get_image(images) do
+    images
+    |> Enum.fetch(0)
+    |> (fn
+          {:ok, value} -> value["source_url"]
+          _ -> nil
+        end).()
+  end
+
   def parse_poi(poi) do
     case poi do
       %{
@@ -90,7 +99,7 @@ defmodule PointOfInterest do
            "location_id" => poi_location,
            "coordinates" => poi_coordinates,
            "snippet" => poi_snippet,
-           "images" => poi_images,
+           "images" => get_image(poi_images),
            "id" => poi_id
          }}
 
@@ -131,6 +140,16 @@ defmodule PointOfInterest do
     |> Enum.take(2)
     |> pmap(&get_poi(&1))
     |> List.flatten()
+    # |> Enum.filter(&match?({:ok, _}, &1))
+    |> Enum.filter(fn
+      {:ok, _value} -> true
+      _ -> false
+    end)
+    |> Enum.map(&elem(&1, 1))
     |> write_poi
+    |> (fn
+          {:ok, data} -> IO.puts("Wrote #{Enum.count(data)} records succesfully")
+          _ -> IO.puts("Failed to write records to File")
+        end).()
   end
 end
