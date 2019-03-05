@@ -5,7 +5,16 @@
 A program which downloads all Point Of Interest Data from Triposo API and stores
 in a file.
 
-This is basically a Script written in Elixir.
+This is CLI Tool written in Elixir.
+
+## How to Run
+
+You will need to create your own secrets.ex in the lib folder and Add the
+Triposo API Keys and Secret.
+
+After that you can build the CLI using
+
+``` mix escript.build ```
 
 ## Installation
 
