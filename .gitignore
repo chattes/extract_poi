@@ -25,3 +25,6 @@ point_of_interest-*.tar
 #Ignore Secrets
 secrets.ex
 
+#Ignore Prepackaged CLI
+poi_cli
+
