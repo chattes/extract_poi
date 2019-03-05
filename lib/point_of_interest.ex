@@ -2,29 +2,19 @@ defmodule PointOfInterest do
   require Secrets
 
   @moduledoc """
-  Documentation for PointOfInterest.
+  -->Takes a Country as Input
+  -->Fetches top 100 cities
+  -->Fetches Top 200 Points of Interest for Each City
+  -->Writes the result to a file after parsing the data
   """
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> PointOfInterest.hello()
-      :world
-
-  """
   @base_url "https://www.triposo.com/api/20181213"
 
-  @doc """
-  Fetches Informtion from Triposo based on the URL Passes.
-  Throttle Request - Not to get Blocked
-  """
-  def fetch_request_triposo(url) do
+  defp fetch_request_triposo(url) do
     %{account: account, token: token} = Secrets.triposo_ids()
     headers = ["X-Triposo-Account": account, "X-Triposo-Token": token]
 
-    wait = Enum.random(1..10) * 1000
+    wait = Enum.random(1..5) * 1000
     IO.puts("Lets Sleep for #{wait} milliseconds")
     :timer.sleep(wait)
 
@@ -35,31 +25,13 @@ defmodule PointOfInterest do
     end
   end
 
-  @doc """
-  Parallel Map
-  """
-
-  def pmap(collection, func) do
+  defp pmap(collection, func) do
     collection
     |> Enum.map(&Task.async(fn -> func.(&1) end))
     |> Enum.map(&Task.await(&1, :infinity))
   end
 
-  @doc """
-  Fetch Top 100 cities for a Country
-  ## Examples
-
-  iex(82)> PointOfInterest.get_cities "IN"
-  [
-  %{city: "New_Delhi", country: "IN"},
-  %{city: "Mumbai", country: "IN"},
-  %{city: "Kolkata", country: "IN"},
-  %{city: "Agra", country: "IN"},
-  ...
-  ]
-
-  """
-  def get_cities(country) do
+  defp get_cities(country) do
     url =
       "#{@base_url}/location.json?countrycode=#{country}&order_by=-score&count=100&fields=id,name"
 
@@ -74,7 +46,7 @@ defmodule PointOfInterest do
     end
   end
 
-  def get_image(images) do
+  defp get_image(images) do
     images
     |> Enum.fetch(0)
     |> (fn
@@ -83,7 +55,7 @@ defmodule PointOfInterest do
         end).()
   end
 
-  def parse_poi(poi) do
+  defp parse_poi(poi) do
     case poi do
       %{
         "name" => poi_name,
@@ -108,15 +80,13 @@ defmodule PointOfInterest do
     end
   end
 
-  def write_poi(poi) do
-    File.write!("../poi_data.json", Poison.encode!(poi), [:write])
+  defp write_poi(poi, filename) do
+    {:ok, cwd} = File.cwd()
+    File.write!("#{cwd}/#{filename}", Poison.encode!(poi), [:write])
     {:ok, poi}
   end
 
-  @doc """
-  Fetch Top 100 POIs for a City
-  """
-  def get_poi(%{city: city, country: country}) do
+  defp get_poi(%{city: city, country: country}) do
     url =
       "#{@base_url}/poi.json?location_id=#{city}&countrycode=#{country}&order_by=-score&count=100"
 
@@ -134,10 +104,9 @@ defmodule PointOfInterest do
     end
   end
 
-  def get_pois_for_country(country) do
+  def get_pois_for_country(%{country: country, filename: filename}) do
     country
     |> get_cities
-    |> Enum.take(2)
     |> pmap(&get_poi(&1))
     |> List.flatten()
     # |> Enum.filter(&match?({:ok, _}, &1))
@@ -146,7 +115,7 @@ defmodule PointOfInterest do
       _ -> false
     end)
     |> Enum.map(&elem(&1, 1))
-    |> write_poi
+    |> write_poi(filename)
     |> (fn
           {:ok, data} -> IO.puts("Wrote #{Enum.count(data)} records succesfully")
           _ -> IO.puts("Failed to write records to File")
