@@ -1,5 +1,5 @@
 defmodule PointOfInterest do
-  require Secrets
+  alias PointOfInterest.Secrets, as: Secrets
 
   @moduledoc """
   -->Takes a Country as Input
@@ -14,7 +14,7 @@ defmodule PointOfInterest do
     %{account: account, token: token} = Secrets.triposo_ids()
     headers = ["X-Triposo-Account": account, "X-Triposo-Token": token]
 
-    wait = Enum.random(1..5) * 1000
+    wait = :rand.uniform(5) * 1000
     IO.puts("Lets Sleep for #{wait} milliseconds")
     :timer.sleep(wait)
 
@@ -67,12 +67,21 @@ defmodule PointOfInterest do
       } ->
         {:ok,
          %{
-           "name" => poi_name,
-           "location_id" => poi_location,
-           "coordinates" => poi_coordinates,
-           "snippet" => poi_snippet,
-           "images" => get_image(poi_images),
-           "id" => poi_id
+           "type" => "Feature",
+           "id" => poi_id,
+           "properties" => %{
+             "osm_id" => poi_id,
+             "other_tags" => "amenity, historic, tourism, attractions",
+             "name" => poi_name,
+             "place" => poi_location
+           },
+           "geometry" => %{
+             "type" => "Point",
+             "coordinates" => [poi_coordinates["longitude"], poi_coordinates["latitude"]]
+           },
+           "extract" => poi_snippet,
+           "image" => get_image(poi_images),
+           "random_text" => poi_snippet
          }}
 
       _ ->
@@ -104,21 +113,25 @@ defmodule PointOfInterest do
     end
   end
 
+  defp status_message({:ok, data}), do: "Wrote #{Enum.count(data)} succesfully"
+  defp status_message(_), do: "Failed to wrote Data to file"
+
   def get_pois_for_country(%{country: country, filename: filename}) do
-    country
-    |> get_cities
-    |> pmap(&get_poi(&1))
-    |> List.flatten()
+    all_pois = country |> get_cities |> pmap(&get_poi(&1)) |> List.flatten()
+    pois = for {:ok, data} <- all_pois, do: data
+    pois |> write_poi(filename) |> status_message |> IO.puts()
+
     # |> Enum.filter(&match?({:ok, _}, &1))
-    |> Enum.filter(fn
-      {:ok, _value} -> true
-      _ -> false
-    end)
-    |> Enum.map(&elem(&1, 1))
-    |> write_poi(filename)
-    |> (fn
-          {:ok, data} -> IO.puts("Wrote #{Enum.count(data)} records succesfully")
-          _ -> IO.puts("Failed to write records to File")
-        end).()
+    # |> Enum.filter(fn
+    #   {:ok, _value} -> true
+    #   _ -> false
+    # end)
+    # |> Enum.map(&elem(&1, 1))
+
+    # |> write_poi(filename)
+    # |> (fn
+    #       {:ok, data} -> IO.puts("Wrote #{Enum.count(data)} records succesfully")
+    #       _ -> IO.puts("Failed to write records to File")
+    #     end).()
   end
 end

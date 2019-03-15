@@ -23,7 +23,7 @@ erl_crash.dump
 point_of_interest-*.tar
 
 #Ignore Secrets
-secrets.ex
+point_of_interest/secrets.ex
 
 #Ignore Prepackaged CLI
 poi_cli

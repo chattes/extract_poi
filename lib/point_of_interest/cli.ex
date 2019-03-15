@@ -1,4 +1,4 @@
-defmodule Poi.CLI do
+defmodule PointOfInterest.CLI do
   require PointOfInterest
   require Logger
   import IO.ANSI
