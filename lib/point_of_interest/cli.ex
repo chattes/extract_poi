@@ -12,7 +12,9 @@ defmodule PointOfInterest.CLI do
   defp parse_args(args) do
     {opts, word, _} =
       args
-      |> OptionParser.parse(switches: [country: :string, filename: :string, count: :integer])
+      |> OptionParser.parse(
+        switches: [country: :string, filename: :string, city: :string, count: :integer]
+      )
 
     {opts, List.to_string(word)}
   end
@@ -31,6 +33,14 @@ defmodule PointOfInterest.CLI do
         """)
 
         %{country: country, filename: filename}
+        |> PointOfInterest.get_pois_for_country()
+
+      [country: country, filename: filename, city: city] ->
+        IO.puts("""
+        Start Processing Point Of Interest for #{city}.Will fetch 200 records
+        """)
+
+        %{country: country, filename: filename, city: city}
         |> PointOfInterest.get_pois_for_country()
 
       [help: _] ->

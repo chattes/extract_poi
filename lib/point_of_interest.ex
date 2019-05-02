@@ -34,7 +34,7 @@ defmodule PointOfInterest do
 
   defp get_cities(country) do
     url =
-      "#{@base_url}/location.json?countrycode=#{country}&order_by=-score&count=2&fields=id,name"
+      "#{@base_url}/location.json?countrycode=#{country}&order_by=-score&count=100&fields=id,name"
 
     fetch_cities = Task.async(fn -> fetch_request_triposo(url) end)
 
@@ -47,19 +47,21 @@ defmodule PointOfInterest do
     end
   end
 
+  def download_and_save_image(url, filename) when is_nil(url), do: nil
+
   def download_and_save_image(url, filename) do
     download_image =
       Task.async(fn ->
-        case HTTPoison.get(url) do
+        case HTTPoison.get(url, [], follow_redirect: true, max_redirect: 10) do
           {:ok, %HTTPoison.Response{status_code: 200, body: body}} -> {:ok, body}
           {:ok, %HTTPoison.Response{status_code: _}} -> {:error, "Nothing"}
-          {:error, %HTTPoison.Error{reason: reason}} -> {:error, reason}
+          _ -> {:error, "Cannot Download Image"}
         end
       end)
 
-    with {:ok, body} <- Task.await(download_image) do
+    with {:ok, body} <- Task.await(download_image, 30000) do
       File.write!("./poi_images/#{filename}.jpg", body)
-      "/poi_images/#{filename}"
+      "/poi_images/#{filename}.jpg"
     else
       _ -> nil
     end
@@ -148,7 +150,7 @@ defmodule PointOfInterest do
     url =
       "#{@base_url}/poi.json?score=>=6&tag_labels=nightlife|topattractions|sightseeing|foodexperiences&location_id=#{
         city
-      }&countrycode=#{country}&order_by=-score&count=2"
+      }&countrycode=#{country}&order_by=-score&count=30"
 
     fetch_poi = Task.async(fn -> fetch_request_triposo(url) end)
 
@@ -167,6 +169,21 @@ defmodule PointOfInterest do
   defp status_message({:ok, data}), do: "Wrote #{Enum.count(data)} succesfully"
   defp status_message(_), do: "Failed to wrote Data to file"
 
+  def get_pois_for_country(%{country: country, filename: filename, city: city}) do
+    all_pois = %{country: country, city: city} |> get_poi |> List.flatten()
+    pois = for {:ok, data} <- all_pois, do: data
+
+    {_, new_pois} =
+      read_file_contents(filename)
+      |> Map.get_and_update!("features", fn current_value ->
+        {current_value, Enum.concat(current_value, pois)}
+      end)
+
+    write_poi(new_pois, filename)
+    |> status_message
+    |> IO.puts()
+  end
+
   def get_pois_for_country(%{country: country, filename: filename}) do
     all_pois = country |> get_cities |> pmap(&get_poi(&1)) |> List.flatten()
     pois = for {:ok, data} <- all_pois, do: data
@@ -180,18 +197,5 @@ defmodule PointOfInterest do
     write_poi(new_pois, filename)
     |> status_message
     |> IO.puts()
-
-    # |> Enum.filter(&match?({:ok, _}, &1))
-    # |> Enum.filter(fn
-    #   {:ok, _value} -> true
-    #   _ -> false
-    # end)
-    # |> Enum.map(&elem(&1, 1))
-
-    # |> write_poi(filename)
-    # |> (fn
-    #       {:ok, data} -> IO.puts("Wrote #{Enum.count(data)} records succesfully")
-    #       _ -> IO.puts("Failed to write records to File")
-    #     end).()
   end
 end
